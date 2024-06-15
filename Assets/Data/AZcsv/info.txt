@@ -1,0 +1,5 @@
+https://www.kaggle.com/datasets/sachinpatel21/az-handwritten-alphabets-in-csv-format/data
+
+The dataset contains 26 folders (A-Z) containing handwritten images in size 2828 pixels, each alphabet in the image is centre fitted to 2020 pixel box.
+
+Each image is stored as Gray-level
