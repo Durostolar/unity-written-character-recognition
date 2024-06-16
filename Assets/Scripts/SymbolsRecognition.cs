@@ -12,15 +12,15 @@ public class SymbolsRecognition : MonoBehaviour
     private int nClasses = 36;
     
     private float learningRate = 0.001f;
-    private int epochs = 10;
+    private int epochs = 50;
     private int batchSize = 32;
     
     private void InitializeNetworkForMnist()
     {
         // Initialize the network with specific settings for the task
         
-        network.AddLayer(24*24,64,Activation.Relu);
-        network.AddLayer(64,nClasses,Activation.Sigmoid);
+        network.AddLayer(24*24,400,Activation.Relu);
+        network.AddLayer(400,nClasses,Activation.Sigmoid);
 
         network.nCLasses = nClasses;
         network.lr = learningRate;
@@ -47,7 +47,7 @@ public class SymbolsRecognition : MonoBehaviour
         var (trainData, trainLabels, validationData, validationLabels, testData, testLabels) = Dataset.dataset.SplitData(0.8f,0.1f);
         
         // Augumentation
-        List<int> minorityClasses = new List<int> { 11, 15, 18, 26 }; // Minority classes that need to be addressed (empirically created)
+        List<int> minorityClasses = new List<int> {11, 15, 18, 26 }; // Minority classes that need to be addressed (empirically created)
         Dataset.dataset.AugmentData(ref trainData, ref trainLabels, minorityClasses);
         Dataset.dataset.AugmentData(ref validationData, ref validationLabels, minorityClasses);
         
@@ -55,7 +55,8 @@ public class SymbolsRecognition : MonoBehaviour
         (float[,] validationDataInputs, float[,] validationDataLabels) = ConvertTo2DArray(validationData, validationLabels);
         (float[,] testDataInputs, float[,] testDataLabels) = ConvertTo2DArray(testData, testLabels);
         
-        EvaulateTestSet(validationDataInputs, validationDataLabels, network);
+        network.ForwardPass(validationDataInputs);
+        network.CalculateLoss(validationDataLabels);
     
         Network.BestModelCallback callback = new Network.BestModelCallback(network.SaveNetParams);
     
@@ -93,18 +94,16 @@ public class SymbolsRecognition : MonoBehaviour
             }
     
             Debug.Log("After Epoch " + epoch);
-            //double loss = EvaulateTestSet(validationDataInputs, validationDataLabels, network);
-            
             network.ForwardPass(validationDataInputs);
-            Debug.Log(network.CalculateLoss(validationDataInputs, validationDataLabels));
-            network.Accuracy(validationDataInputs, validationDataLabels);
+            double loss = network.CalculateLoss(validationDataLabels);
     
-            // Callback, skip it in the first few epochs to save time
-            //if (epoch > 1)
-            //{
-            //    callback.Invoke(loss);
-            //}
+             //Callback, skip it in the first epochs to save time
+            if (epoch > 20)
+            {
+                callback.Invoke(loss);
+            }
         }
+        EvaulateTestSet(testDataInputs, testDataLabels, network);
     }
     
     public void EvaluateCollectedTest(Network net)
@@ -132,8 +131,8 @@ public class SymbolsRecognition : MonoBehaviour
     
         net.ForwardPass(testSet);
         Debug.Log("Testing results:");
-        double loss =net.CalculateLoss(testSet, testLabels);
-        net.Accuracy(testSet, testLabels);
+        double loss =net.CalculateLoss(testLabels);
+        net.Conf(testLabels);
         return loss;
     }
     

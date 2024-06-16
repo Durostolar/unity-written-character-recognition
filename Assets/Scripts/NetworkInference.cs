@@ -83,11 +83,13 @@ public class NetworkInference : MonoBehaviour
     private void UpdateUI(float[,] outputs)
     {
         // Find the top predictions, and update the UI
-        
+
+        float sum = 0;
         float[] scores = new float[outputs.GetLength(1)];
         for (int i = 0; i < scores.Length; i++)
         {
             scores[i] = outputs[0, i];
+            sum += scores[i];
         }
 
         var sortedIndices = Enumerable.Range(0, scores.Length)
@@ -98,7 +100,7 @@ public class NetworkInference : MonoBehaviour
         {
             int index = sortedIndices[i];
             symbolTextFields[i].text = ClassToString(index);
-            probabilityTextFields[i].text = (100* scores[index]).ToString("F2") + "%";
+            probabilityTextFields[i].text = (100 * scores[index] / sum).ToString("F2") + "%";
         }
     }
     

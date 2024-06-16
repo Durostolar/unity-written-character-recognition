@@ -94,7 +94,7 @@ public class Dataset : MonoBehaviour
         
     }
 
-    public (List<int[]>, List<int>) ReadCsv(string path, int labelOffset, int sizeLimit = 100000)
+    public (List<int[]>, List<int>) ReadCsv(string path, int labelOffset, int sizeLimit = 20000000)
     {
         // Read image data and labels from a CSV file, applying a label offset in case of different types of data sources
 

@@ -51,26 +51,27 @@ public static class ActivationFunctions
 
 [Serializable]
 public class Network : MonoBehaviour
-{    
+{
     public List<Layer> Layers = new();
     public int nCLasses;
     public float lr;
-    
+
     public delegate float ActivationFunction(float x);
+
     public delegate float ActivationFunctionDerivative(float x);
-    
+
     static Random _rand;
 
     public void Start()
     {
         _rand = new Random(123);
     }
-    
+
     public class Layer
     {
         public readonly int NInputs;
         public readonly int NNeurons;
-        
+
         public float[,] Weights;
         public float[] Biases;
 
@@ -78,7 +79,7 @@ public class Network : MonoBehaviour
 
         private float[,] nodeErrors;
         public readonly Activation Activation;
-        
+
         private ActivationFunction activationFunction;
         private ActivationFunctionDerivative activationFunctionDerivative;
 
@@ -95,7 +96,7 @@ public class Network : MonoBehaviour
 
             InitializeHe();
         }
-        
+
         private void SetActivations(Activation activation)
         {
             switch (activation)
@@ -113,25 +114,6 @@ public class Network : MonoBehaviour
             }
         }
 
-        private void InitializeRandom()
-        {
-            for (int i = 0; i < Weights.GetLength(0); i++)
-            {
-                Biases[i] = RandomInNormalDistribution() / Mathf.Sqrt(NInputs);
-                for (int j = 0; j < Weights.GetLength(1); j++)
-                {
-                    Weights[i, j] = RandomInNormalDistribution() / Mathf.Sqrt(NInputs);
-                }
-            }
-
-            float RandomInNormalDistribution()
-            {
-                float x1 = 1 - _rand.NextFloat();
-                float x2 = 1 - _rand.NextFloat();
-                return Mathf.Sqrt((float)(-2.0 * Mathf.Log(x1))) * Mathf.Cos((float)(2.0 * Mathf.PI * x2));
-            }
-        }
-        
         private void InitializeHe()
         {
             for (int i = 0; i < Weights.GetLength(0); i++)
@@ -151,12 +133,11 @@ public class Network : MonoBehaviour
             }
         }
 
-        
         // forward pass
-        public virtual void CalculateOutputs(float [,] inputs)
+        public virtual void CalculateOutputs(float[,] inputs)
         {
             LazyAllocate(ref Outputs, inputs.GetLength(0), NNeurons);
-            
+
             Parallel.For(0, inputs.GetLength(0), b =>
             {
                 for (int j = 0; j < NNeurons; j++)
@@ -166,11 +147,12 @@ public class Network : MonoBehaviour
                     {
                         sum += Weights[j, i] * inputs[b, i];
                     }
+
                     Outputs[b, j] = activationFunction(sum);
                 }
             });
         }
-        
+
         private void LazyAllocate(ref float[,] matrix, int dim1, int dim2)
         {
             if (matrix == null || matrix.GetLength(0) != dim1 || matrix.GetLength(1) != dim2)
@@ -178,66 +160,140 @@ public class Network : MonoBehaviour
                 matrix = new float[dim1, dim2];
             }
         }
-        
-        public void BackpropagateOuter(float [,] y, float [,] previousOutputs, float lr)
+
+        public void BackpropagateOuter(float[,] y, float[,] previousOutputs, float lr)
         {
-            LazyAllocate(ref nodeErrors, Outputs.GetLength(0), NNeurons);
+            //LazyAllocate(ref nodeErrors, Outputs.GetLength(0), NNeurons);
+//
+            //Parallel.For(0, Outputs.GetLength(0), b =>
+            //{
+            //    for (int j = 0; j < NNeurons; j++)
+            //    {
+            //        nodeErrors[b, j] = Outputs[b, j] - (j == (int)y[b, 0] ? 1 : 0);
+            //    }
+            //});
+            //UpdateWeights(lr, previousOutputs);
+            
+            
+            // lazy allocation
+            if (nodeErrors == null || 
+                nodeErrors.GetLength(0) != Outputs.GetLength(0) || 
+                nodeErrors.GetLength(1) != NNeurons)
+            {
+                nodeErrors = new float[Outputs.GetLength(0), NNeurons];
+            }
 
             Parallel.For(0, Outputs.GetLength(0), b =>
             {
                 for (int j = 0; j < NNeurons; j++)
                 {
-                    nodeErrors[b, j] = Outputs[b, j] - (j == (int)y[b, 0] ? 1 : 0);
+                    nodeErrors[b, j] = Outputs[b, j];
+                    if (j == (int)y[b, 0]) nodeErrors[b, j] -= 1;
                 }
             });
             UpdateWeights(lr, previousOutputs);
         }
-        
-        public virtual void BackpropagateInner(Layer nextLayer, float [,] previousOutputs, float lr)
+
+        public virtual void BackpropagateInner(Layer nextLayer, float[,] previousOutputs, float lr)
         {
-            LazyAllocate(ref nodeErrors, Outputs.GetLength(0), NNeurons);
+            //LazyAllocate(ref nodeErrors, Outputs.GetLength(0), NNeurons);
+//
+            //float[,] tempDerivatives = new float[Outputs.GetLength(0), nextLayer.NNeurons];
+            //for (int b = 0; b < Outputs.GetLength(0); b++)
+            //for (int r = 0; r < nextLayer.NNeurons; r++)
+            //    tempDerivatives[b, r] = nextLayer.activationFunctionDerivative(nextLayer.Outputs[b, r]);
+//
+            //Parallel.For(0, Outputs.GetLength(0), b =>
+            //{
+            //    for (int j = 0; j < NNeurons; j++)
+            //    {
+            //        nodeErrors[b, j] = 0;
+            //        for (int r = 0; r < nextLayer.NNeurons; r++)
+            //        {
+            //            nodeErrors[b, j] += nextLayer.nodeErrors[b, r] * tempDerivatives[b, r] *
+            //                                nextLayer.Weights[r, j];
+            //        }
+            //    }
+            //});
+            //UpdateWeights(lr, previousOutputs);
             
-            float[,] tempDerivatives = new float[Outputs.GetLength(0), nextLayer.NNeurons];
+            if (nodeErrors == null || 
+                nodeErrors.GetLength(0) != Outputs.GetLength(0) || 
+                nodeErrors.GetLength(1) != NNeurons)
+            {
+                nodeErrors = new float[Outputs.GetLength(0), NNeurons];
+            }
+            
             for (int b = 0; b < Outputs.GetLength(0); b++)
-            for (int r = 0; r < nextLayer.NNeurons; r++)
-                tempDerivatives[b, r] = nextLayer.activationFunctionDerivative(nextLayer.Outputs[b, r]);
-            
-            Parallel.For(0, Outputs.GetLength(0), b =>
             {
                 for (int j = 0; j < NNeurons; j++)
                 {
                     nodeErrors[b,j] = 0;
                     for (int r = 0; r < nextLayer.NNeurons; r++)
                     {
-                        nodeErrors[b,j] += nextLayer.nodeErrors[b,r] * tempDerivatives[b, r] *
-                                         nextLayer.Weights[r, j];
+                        nodeErrors[b,j] += nextLayer.nodeErrors[b,r] * nextLayer.activationFunctionDerivative(nextLayer.Outputs[b,r]) *
+                                           nextLayer.Weights[r, j];
                     }
                 }
-            });
+            }
             UpdateWeights(lr, previousOutputs);
         }
 
         public virtual void UpdateWeights(float lr, float[,] previousOutputs)
         {
+            //Parallel.For(0, NNeurons, j =>
+            //{
+            //    float batchError = 0;
+            //    for (int i = 0; i < NInputs; i++)
+            //    {
+            //        float sum = 0;
+            //        for (int b = 0; b < Outputs.GetLength(0); b++)
+            //        {
+            //            float gradient = nodeErrors[b, j] * activationFunctionDerivative(Outputs[b, j]);
+            //            sum += gradient * previousOutputs[b, i];
+            //            batchError += gradient;
+            //        }
+            //        Weights[j, i] -= lr * sum;
+            //    }
+            //    Biases[j] -= lr * batchError;
+            //});
+
+            float[,] derivatives = new float[Outputs.GetLength(0), NNeurons];
+
+            for (int j = 0; j < NNeurons; j++)
+            {
+                for (int b = 0; b < Outputs.GetLength(0); b++)
+                {
+                    derivatives[b, j] = nodeErrors[b, j] * activationFunctionDerivative(Outputs[b, j]);
+                }
+            }
+
             Parallel.For(0, NNeurons, j =>
             {
-                float batchError = 0;
+                float batchError;
                 for (int i = 0; i < NInputs; i++)
                 {
-                    float sum = 0;
+                    batchError = 0;
                     for (int b = 0; b < Outputs.GetLength(0); b++)
                     {
-                        float gradient = nodeErrors[b, j] * activationFunctionDerivative(Outputs[b, j]);
-                        sum += gradient * previousOutputs[b, i];
-                        batchError += gradient;
+                        batchError += derivatives[b, j] * previousOutputs[b, i];
                     }
-                    Weights[j, i] -= lr * sum;
+
+                    Weights[j, i] -= lr * batchError;
                 }
+
+                batchError = 0;
+                for (int b = 0; b < Outputs.GetLength(0); b++)
+                {
+                    batchError += derivatives[b, j];
+                }
+
                 Biases[j] -= lr * batchError;
             });
         }
     }
-    
+
+
     public void AddLayer(int nInputs, int nNeurons, Activation activationType)
     {
         Layer newLayer = new Layer(nInputs, nNeurons, activationType);
@@ -251,20 +307,24 @@ public class Network : MonoBehaviour
     
     public void ForwardPass(float [,] input)
     {
+        //Layers[0].CalculateOutputs(input);
+        //for (int i = 1; i < Layers.Count; i++)
+        //{
+        //    Layers[i].CalculateOutputs(Layers[i-1].Outputs);    
+        //}
         Layers[0].CalculateOutputs(input);
-        for (int i = 1; i < Layers.Count; i++)
-        {
-            Layers[i].CalculateOutputs(Layers[i-1].Outputs);    
-        }
+        Layers[1].CalculateOutputs(Layers[0].Outputs);
     }
     
     public void BackwardPass(float [,] input, float [,] target)
     { 
-        Layers[^1].BackpropagateOuter(target, Layers[^2].Outputs, lr);
-        for (int i = Layers.Count-2; i > 0; i--)
-        {
-            Layers[i-1].BackpropagateInner(Layers[i], Layers[i+1].Outputs, lr);    
-        }
+        //Layers[^1].BackpropagateOuter(target,  Layers[^2].Outputs, lr);
+        //for (int i = Layers.Count-2; i > 0; i--)
+        //{
+        //    Layers[i-1].BackpropagateInner(Layers[i], Layers[i+1].Outputs, lr);    
+        //}
+        //Layers[0].BackpropagateInner(Layers[1], input, lr);
+        Layers[1].BackpropagateOuter(target,  Layers[0].Outputs, lr);
         Layers[0].BackpropagateInner(Layers[1], input, lr);
     }
     
@@ -304,11 +364,11 @@ public class Network : MonoBehaviour
         File.WriteAllText("Assets/Resources/model.json", json);
     }
     
-    public double CalculateLoss(float[,] inputs, float[,] labels)
+    public double CalculateLoss(float[,] labels)
     {
         double mse = 0;
 
-        for (int i = 0; i < inputs.GetLength(0); i++)
+        for (int i = 0; i < labels.GetLength(0); i++)
         {
             int trueLabel = (int)labels[i, 0];
             
@@ -324,18 +384,17 @@ public class Network : MonoBehaviour
                 }
             }
         }
-        mse /= inputs.GetLength(0);
+        mse /= labels.GetLength(0);
         Debug.Log("MSE: " + mse);
         return mse;
     }
     
-    public void Accuracy(float[,] inputs, float[,] labels)
+    public void Conf(float[,] labels)
     {
         int hit = 0;
-        int[] classHits = new int[nCLasses];
-        int[] classCounts = new int[nCLasses];
+        int[,] confusionMatrix = new int[nCLasses,nCLasses];
         
-        for (int i = 0; i < inputs.GetLength(0); i++)
+        for (int i = 0; i < labels.GetLength(0); i++)
         {
             int maxIndex = 0;
             int trueLabel = (int)labels[i, 0];
@@ -346,24 +405,25 @@ public class Network : MonoBehaviour
                     maxIndex = j;
                 }
             }
-
+            confusionMatrix[trueLabel, maxIndex]++;
             if (maxIndex == trueLabel)
             {
                 hit++;
-                classHits[trueLabel]++;
             }
-            classCounts[trueLabel]++;
         }
+
+        string accuracies = "";
 
         for (int i = 0; i < nCLasses; i++)
         {
-            if (classHits[i] < classCounts[i] * 0.9)
+            for (int j = 0; j < nCLasses; j++)
             {
-                Debug.Log("Accuracy for class " + i + " : " + classHits[i] + " from " + classCounts[i]);
+                accuracies+=confusionMatrix[i,j]+",";
             }
+            Debug.Log(accuracies);
+            accuracies = "";
         }
-        
-        Debug.Log("Accuracy " + hit + " from " + inputs.GetLength(0));
+        Debug.Log("Total Accuracy " + hit + " from " + labels.GetLength(0));
     }
 
     public class BestModelCallback
