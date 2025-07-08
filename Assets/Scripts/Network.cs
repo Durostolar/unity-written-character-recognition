@@ -52,6 +52,8 @@ public static class ActivationFunctions
 [Serializable]
 public class Network : MonoBehaviour
 {
+    // Class representing a neural network, managing layers, activations, and training procedures.
+
     public List<Layer> Layers = new();
     public int nCLasses;
     public float lr;
@@ -68,7 +70,9 @@ public class Network : MonoBehaviour
     }
 
     public class Layer
-    {
+    {    
+        // Class represents a single layer in the neural network, holding neurons, weights, biases, and related computations
+        
         public readonly int NInputs;
         public readonly int NNeurons;
 
@@ -110,12 +114,14 @@ public class Network : MonoBehaviour
                     activationFunctionDerivative = ActivationFunctions.SigmoidDerivative;
                     break;
                 default:
-                    throw new ArgumentException("Unsupported activation type.");
+                    throw new ArgumentException("Unsupported activation type: {activation}");
             }
         }
 
         private void InitializeHe()
-        {
+        {    
+            // Initialize layer weights and biases using He initialization method
+            
             for (int i = 0; i < Weights.GetLength(0); i++)
             {
                 Biases[i] = RandomInNormalDistribution() * Mathf.Sqrt(2f / NInputs);
@@ -133,9 +139,10 @@ public class Network : MonoBehaviour
             }
         }
 
-        // forward pass
         public virtual void CalculateOutputs(float[,] inputs)
-        {
+        { 
+            // Compute the outputs for this layer given the inputs, i.e. forward pass
+            
             LazyAllocate(ref Outputs, inputs.GetLength(0), NNeurons);
 
             Parallel.For(0, inputs.GetLength(0), b =>
@@ -154,7 +161,10 @@ public class Network : MonoBehaviour
         }
 
         private void LazyAllocate(ref float[,] matrix, int dim1, int dim2)
-        {
+        {    
+            // Ensure that matrix has the correct dimensions, reallocating if necessary.
+            // Useful to save memory realocations when batch sizes are different
+            
             if (matrix == null || matrix.GetLength(0) != dim1 || matrix.GetLength(1) != dim2)
             {
                 matrix = new float[dim1, dim2];
@@ -162,26 +172,10 @@ public class Network : MonoBehaviour
         }
 
         public void BackpropagateOuter(float[,] y, float[,] previousOutputs, float lr)
-        {
-            //LazyAllocate(ref nodeErrors, Outputs.GetLength(0), NNeurons);
-//
-            //Parallel.For(0, Outputs.GetLength(0), b =>
-            //{
-            //    for (int j = 0; j < NNeurons; j++)
-            //    {
-            //        nodeErrors[b, j] = Outputs[b, j] - (j == (int)y[b, 0] ? 1 : 0);
-            //    }
-            //});
-            //UpdateWeights(lr, previousOutputs);
+        {    
+            // Backpropagation for the output layer
             
-            
-            // lazy allocation
-            if (nodeErrors == null || 
-                nodeErrors.GetLength(0) != Outputs.GetLength(0) || 
-                nodeErrors.GetLength(1) != NNeurons)
-            {
-                nodeErrors = new float[Outputs.GetLength(0), NNeurons];
-            }
+            LazyAllocate(ref nodeErrors, Outputs.GetLength(0), NNeurons);
 
             Parallel.For(0, Outputs.GetLength(0), b =>
             {
@@ -195,34 +189,10 @@ public class Network : MonoBehaviour
         }
 
         public virtual void BackpropagateInner(Layer nextLayer, float[,] previousOutputs, float lr)
-        {
-            //LazyAllocate(ref nodeErrors, Outputs.GetLength(0), NNeurons);
-//
-            //float[,] tempDerivatives = new float[Outputs.GetLength(0), nextLayer.NNeurons];
-            //for (int b = 0; b < Outputs.GetLength(0); b++)
-            //for (int r = 0; r < nextLayer.NNeurons; r++)
-            //    tempDerivatives[b, r] = nextLayer.activationFunctionDerivative(nextLayer.Outputs[b, r]);
-//
-            //Parallel.For(0, Outputs.GetLength(0), b =>
-            //{
-            //    for (int j = 0; j < NNeurons; j++)
-            //    {
-            //        nodeErrors[b, j] = 0;
-            //        for (int r = 0; r < nextLayer.NNeurons; r++)
-            //        {
-            //            nodeErrors[b, j] += nextLayer.nodeErrors[b, r] * tempDerivatives[b, r] *
-            //                                nextLayer.Weights[r, j];
-            //        }
-            //    }
-            //});
-            //UpdateWeights(lr, previousOutputs);
+        {    
+            // Backpropagation for the input layer
             
-            if (nodeErrors == null || 
-                nodeErrors.GetLength(0) != Outputs.GetLength(0) || 
-                nodeErrors.GetLength(1) != NNeurons)
-            {
-                nodeErrors = new float[Outputs.GetLength(0), NNeurons];
-            }
+            LazyAllocate(ref nodeErrors, Outputs.GetLength(0), NNeurons);
             
             for (int b = 0; b < Outputs.GetLength(0); b++)
             {
@@ -240,24 +210,9 @@ public class Network : MonoBehaviour
         }
 
         public virtual void UpdateWeights(float lr, float[,] previousOutputs)
-        {
-            //Parallel.For(0, NNeurons, j =>
-            //{
-            //    float batchError = 0;
-            //    for (int i = 0; i < NInputs; i++)
-            //    {
-            //        float sum = 0;
-            //        for (int b = 0; b < Outputs.GetLength(0); b++)
-            //        {
-            //            float gradient = nodeErrors[b, j] * activationFunctionDerivative(Outputs[b, j]);
-            //            sum += gradient * previousOutputs[b, i];
-            //            batchError += gradient;
-            //        }
-            //        Weights[j, i] -= lr * sum;
-            //    }
-            //    Biases[j] -= lr * batchError;
-            //});
-
+        {    
+            // Update the weights and biases of the layer based on the computed gradients and learning rate
+            
             float[,] derivatives = new float[Outputs.GetLength(0), NNeurons];
 
             for (int j = 0; j < NNeurons; j++)
@@ -296,40 +251,46 @@ public class Network : MonoBehaviour
 
     public void AddLayer(int nInputs, int nNeurons, Activation activationType)
     {
+        // Add a new layer with specified parameters
+
         Layer newLayer = new Layer(nInputs, nNeurons, activationType);
         Layers.Add(newLayer);
     }
 
     public void ClearLayers()
     {
+        // Clear all layers
+        
         Layers.Clear();
     }
     
     public void ForwardPass(float [,] input)
-    {
-        //Layers[0].CalculateOutputs(input);
-        //for (int i = 1; i < Layers.Count; i++)
-        //{
-        //    Layers[i].CalculateOutputs(Layers[i-1].Outputs);    
-        //}
+    {    
+        // Conduct a forward pass through the network using the provided input matrix
+        
         Layers[0].CalculateOutputs(input);
-        Layers[1].CalculateOutputs(Layers[0].Outputs);
+        for (int i = 1; i < Layers.Count; i++)
+        {
+            Layers[i].CalculateOutputs(Layers[i-1].Outputs);    
+        }
     }
     
     public void BackwardPass(float [,] input, float [,] target)
-    { 
-        //Layers[^1].BackpropagateOuter(target,  Layers[^2].Outputs, lr);
-        //for (int i = Layers.Count-2; i > 0; i--)
-        //{
-        //    Layers[i-1].BackpropagateInner(Layers[i], Layers[i+1].Outputs, lr);    
-        //}
-        //Layers[0].BackpropagateInner(Layers[1], input, lr);
-        Layers[1].BackpropagateOuter(target,  Layers[0].Outputs, lr);
+    {     
+        // Conduct a backward pass for training the network using input and target matrices
+    
+        Layers[^1].BackpropagateOuter(target,  Layers[^2].Outputs, lr);
+        for (int i = Layers.Count-2; i > 0; i--)
+        {
+            Layers[i].BackpropagateInner(Layers[i+1], Layers[i-1].Outputs, lr);    
+        }
         Layers[0].BackpropagateInner(Layers[1], input, lr);
     }
     
     public NetworkData GetData()
     {
+        // Extract and return the current state of the network
+        
         NetworkData data = new NetworkData();
         foreach (Layer layer in Layers)
         {
@@ -345,7 +306,9 @@ public class Network : MonoBehaviour
     }
     
     public void LoadData(NetworkData data)
-    {
+    {    
+        // Load network configuration and parameters from a given data structure
+        
         Layers.Clear();
         foreach (LayerData layerData in data.layers)
         {
@@ -358,14 +321,25 @@ public class Network : MonoBehaviour
     }
     
     public void SaveNetParams()
-    {
-        NetworkData data = GetData();
-        string json = JsonUtility.ToJson(data);
-        File.WriteAllText("Assets/Resources/model.json", json);
+    {    
+        // Saves the network's parameters and configuration to a JSON file
+        
+        try
+        {
+            NetworkData data = GetData();
+            string json = JsonUtility.ToJson(data);
+            File.WriteAllText("Assets/Resources/model.json", json);
+        }
+        catch (IOException ex)
+        {
+            Debug.LogError($"Failed to save network parameters: {ex.Message}");
+        }
     }
     
     public double CalculateLoss(float[,] labels)
     {
+        // Calculate and log the mean squared error loss
+        
         double mse = 0;
 
         for (int i = 0; i < labels.GetLength(0); i++)
@@ -390,7 +364,9 @@ public class Network : MonoBehaviour
     }
     
     public void Conf(float[,] labels)
-    {
+    {    
+        // Construct and log a confusion matrix and calculate the classification accuracy
+        
         int hit = 0;
         int[,] confusionMatrix = new int[nCLasses,nCLasses];
         
@@ -427,7 +403,9 @@ public class Network : MonoBehaviour
     }
 
     public class BestModelCallback
-    {
+    {    
+        // Handles the logic for tracking and responding to the best model based on validation loss
+        
         public double BestValidLoss { get; private set; } = double.MaxValue;
         private Action onNewBest;
 
@@ -441,7 +419,7 @@ public class Network : MonoBehaviour
             if (validLoss < BestValidLoss)
             {
                 BestValidLoss = validLoss;
-                Debug.Log("saving model");
+                Debug.Log("Saving the model");
                 onNewBest?.Invoke(); 
             }
         }

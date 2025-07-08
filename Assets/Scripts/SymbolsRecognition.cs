@@ -12,15 +12,15 @@ public class SymbolsRecognition : MonoBehaviour
     private int nClasses = 36;
     
     private float learningRate = 0.001f;
-    private int epochs = 50;
+    private int epochs = 5;
     private int batchSize = 32;
     
     private void InitializeNetworkForMnist()
     {
         // Initialize the network with specific settings for the task
         
-        network.AddLayer(24*24,400,Activation.Relu);
-        network.AddLayer(400,nClasses,Activation.Sigmoid);
+        network.AddLayer(24*24,200,Activation.Relu);
+        network.AddLayer(200,nClasses,Activation.Sigmoid);
 
         network.nCLasses = nClasses;
         network.lr = learningRate;
@@ -98,7 +98,7 @@ public class SymbolsRecognition : MonoBehaviour
             double loss = network.CalculateLoss(validationDataLabels);
     
              //Callback, skip it in the first epochs to save time
-            if (epoch > 20)
+            if (epoch > 15)
             {
                 callback.Invoke(loss);
             }
